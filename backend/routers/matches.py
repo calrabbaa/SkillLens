@@ -6,6 +6,7 @@ from api_schemas import MatchResult
 from database import get_db
 from services.match_service import calculate_match
 
+from demo_sessions import get_demo_session_id
 
 router = APIRouter(
     prefix="/api/matches",
@@ -25,12 +26,14 @@ class MatchRequest(BaseModel):
 def create_match(
     request: MatchRequest,
     db: Session = Depends(get_db),
+    demo_session_id: str = Depends(get_demo_session_id),
 ):
     try:
         return calculate_match(
             db=db,
             job_id=request.job_id,
             resume_id=request.resume_id,
+            demo_session_id=demo_session_id,
         )
 
     except ValueError as exc:

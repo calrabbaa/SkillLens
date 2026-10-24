@@ -2,8 +2,9 @@ import os
 
 from contextlib import asynccontextmanager
 
-from fastapi import Depends, FastAPI
+from fastapi import Depends, FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
+from demo_sessions import create_demo_session
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
@@ -74,3 +75,12 @@ async def root():
 @app.get("/api/health")
 async def health():
     return {"status": "ok"}
+
+@app.post("/api/demo-session", status_code=201)
+def issue_demo_session(response: Response):
+    response.headers["Cache-Control"] = "no-store"
+
+    return {
+        "token": create_demo_session(),
+        "expires_in_seconds": 604800,
+    }

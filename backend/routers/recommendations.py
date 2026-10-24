@@ -20,6 +20,8 @@ from services.recommendation_service import (
 from fastapi import Request
 from rate_limiter import ai_rate_limit
 
+from demo_sessions import get_demo_session_id
+
 
 router = APIRouter(
     prefix="/api/recommendations",
@@ -41,10 +43,12 @@ def create_recommendations(
     request: Request,
     db_request: RecommendationRequest,
     db: Session = Depends(get_db),
+    demo_session_id: str = Depends(get_demo_session_id),
 ):
     job = get_job_for_matching(
         db,
         db_request.job_id,
+        demo_session_id,
     )
 
     if job is None:
@@ -56,6 +60,7 @@ def create_recommendations(
     resume = get_resume_for_matching(
         db,
         db_request.resume_id,
+        demo_session_id,
     )
 
     if resume is None:

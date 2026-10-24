@@ -1,6 +1,80 @@
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000/api";
 
+const SESSION_STORAGE_KEY = "skilllens_demo_session";
+
+let sessionPromise: Promise<string> | null = null;
+
+async function getDemoSessionToken(): Promise<string> {
+  const existingToken = sessionStorage.getItem(
+    SESSION_STORAGE_KEY,
+  );
+
+  if (existingToken) {
+    return existingToken;
+  }
+
+  // Prevent concurrent requests from creating different sessions.
+  if (!sessionPromise) {
+    sessionPromise = (async () => {
+      const response = await fetch(
+        `${API_BASE_URL}/demo-session`,
+        {
+          method: "POST",
+          cache: "no-store",
+        },
+      );
+
+      if (!response.ok) {
+        throw new Error("Could not create a demo session.");
+      }
+
+      const data: { token: string } = await response.json();
+
+      if (!data.token) {
+        throw new Error("Invalid demo session response.");
+      }
+
+      sessionStorage.setItem(
+        SESSION_STORAGE_KEY,
+        data.token,
+      );
+
+      return data.token;
+    })().finally(() => {
+      sessionPromise = null;
+    });
+  }
+
+  return sessionPromise;
+}
+
+async function authorizedFetch(
+  url: string,
+  options: RequestInit = {},
+): Promise<Response> {
+  const token = await getDemoSessionToken();
+
+  const headers = new Headers(options.headers);
+
+  headers.set("Authorization", `Bearer ${token}`);
+
+  const response = await fetch(url, {
+    ...options,
+    headers,
+  });
+
+  if (response.status === 401) {
+    sessionStorage.removeItem(SESSION_STORAGE_KEY);
+
+    throw new Error(
+      "Your demo session has expired. Refresh the page " +
+      "to start a new session.",
+    );
+  }
+
+  return response;
+}
 
 export type Skill = {
   name: string;
@@ -48,7 +122,7 @@ async function handleResponse<T>(response: Response): Promise<T> {
 export async function createJob(
   description: string,
 ): Promise<JobDetail> {
-  const response = await fetch(`${API_BASE_URL}/jobs`, {
+  const response = await authorizedFetch(`${API_BASE_URL}/jobs`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -63,14 +137,14 @@ export async function createJob(
 
 
 export async function getJobs(): Promise<JobSummary[]> {
-  const response = await fetch(`${API_BASE_URL}/jobs`);
+  const response = await authorizedFetch(`${API_BASE_URL}/jobs`);
 
   return handleResponse<JobSummary[]>(response);
 }
 
 
 export async function getJob(jobId: number): Promise<JobDetail> {
-  const response = await fetch(`${API_BASE_URL}/jobs/${jobId}`);
+  const response = await authorizedFetch(`${API_BASE_URL}/jobs/${jobId}`);
 
   return handleResponse<JobDetail>(response);
 }
@@ -105,7 +179,7 @@ export async function uploadResume(
 
   formData.append("file", file);
 
-  const response = await fetch(`${API_BASE_URL}/resumes`, {
+  const response = await authorizedFetch(`${API_BASE_URL}/resumes`, {
     method: "POST",
     body: formData,
   });
@@ -115,7 +189,7 @@ export async function uploadResume(
 
 
 export async function getResumes(): Promise<ResumeSummary[]> {
-  const response = await fetch(`${API_BASE_URL}/resumes`);
+  const response = await authorizedFetch(`${API_BASE_URL}/resumes`);
 
   return handleResponse<ResumeSummary[]>(response);
 }
@@ -124,7 +198,7 @@ export async function getResumes(): Promise<ResumeSummary[]> {
 export async function getResume(
   resumeId: number,
 ): Promise<ResumeDetail> {
-  const response = await fetch(
+  const response = await authorizedFetch(
     `${API_BASE_URL}/resumes/${resumeId}`,
   );
 
@@ -157,7 +231,7 @@ export async function createMatch(
   jobId: number,
   resumeId: number,
 ): Promise<MatchResult> {
-  const response = await fetch(`${API_BASE_URL}/matches`, {
+  const response = await authorizedFetch(`${API_BASE_URL}/matches`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -188,7 +262,7 @@ export async function getRecommendations(
   jobId: number,
   resumeId: number,
 ): Promise<RecommendationResult> {
-  const response = await fetch(
+  const response = await authorizedFetch(
     `${API_BASE_URL}/recommendations`,
     {
       method: "POST",

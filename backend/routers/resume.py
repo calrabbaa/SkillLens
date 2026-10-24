@@ -10,6 +10,8 @@ from api_schemas import ResumeDetail, ResumeSummary
 from database import get_db
 from services.resume_service import create_resume
 
+from demo_sessions import get_demo_session_id
+
 
 router = APIRouter(
     prefix="/api/resumes",
@@ -23,6 +25,7 @@ MAX_FILE_SIZE = 5 * 1024 * 1024
 def get_resume_detail(
     db: Session,
     resume_id: int,
+    demo_session_id: str,
 ) -> ResumeDetail | None:
 
     statement = (
@@ -31,7 +34,10 @@ def get_resume_detail(
             selectinload(models.Resume.skills)
             .selectinload(models.ResumeSkill.skill)
         )
-        .where(models.Resume.id == resume_id)
+        .where(
+            models.Resume.id == resume_id,
+            models.Resume.demo_session_id == demo_session_id,
+            )
     )
 
     resume = db.scalar(statement)
@@ -64,6 +70,7 @@ async def upload_resume(
         File(description="PDF CV"),
     ],
     db: Session = Depends(get_db),
+    demo_session_id: str = Depends(get_demo_session_id),
 ):
     if file.content_type != "application/pdf":
         raise HTTPException(
@@ -90,6 +97,7 @@ async def upload_resume(
             db=db,
             filename=file.filename or "unknown.pdf",
             file_bytes=file_bytes,
+            demo_session_id=demo_session_id,
         )
 
     except ValueError as exc:
@@ -106,7 +114,7 @@ async def upload_resume(
             detail="Failed to process the CV.",
         ) from exc
 
-    result = get_resume_detail(db, resume_id)
+    result = get_resume_detail(db, resume_id, demo_session_id)
 
     if result is None:
         raise HTTPException(
@@ -123,10 +131,12 @@ async def upload_resume(
 )
 def list_resumes(
     db: Session = Depends(get_db),
+    demo_session_id: str = Depends(get_demo_session_id),
 ):
     statement = (
         select(models.Resume)
         .options(selectinload(models.Resume.skills))
+        .where(models.Resume.demo_session_id == demo_session_id)
         .order_by(models.Resume.created_at.desc())
     )
 
@@ -150,8 +160,9 @@ def list_resumes(
 def get_resume(
     resume_id: int,
     db: Session = Depends(get_db),
+    demo_session_id: str = Depends(get_demo_session_id),
 ):
-    result = get_resume_detail(db, resume_id)
+    result = get_resume_detail(db, resume_id, demo_session_id)
 
     if result is None:
         raise HTTPException(
