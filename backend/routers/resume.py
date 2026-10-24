@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, Request
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
@@ -11,6 +11,7 @@ from database import get_db
 from services.resume_service import create_resume
 
 from demo_sessions import get_demo_session_id
+from rate_limiter import ai_rate_limit
 
 
 router = APIRouter(
@@ -64,7 +65,9 @@ def get_resume_detail(
     response_model=ResumeDetail,
     status_code=201,
 )
+@ai_rate_limit
 async def upload_resume(
+    request: Request,
     file: Annotated[
         UploadFile,
         File(description="PDF CV"),
