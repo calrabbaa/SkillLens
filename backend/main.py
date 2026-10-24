@@ -36,7 +36,7 @@ cors_origins = [
     origin.strip()
     for origin in os.getenv(
         "CORS_ORIGINS",
-        "http://localhost:5173,http://localhost:3000,https://skilllens.online",
+        "http://localhost:5173,http://localhost:3000,https://skilllens.online,https://www.skilllens.online",
     ).split(",")
     if origin.strip()
 ]
