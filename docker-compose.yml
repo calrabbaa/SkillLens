@@ -3,9 +3,9 @@ services:
     image: postgres:18
 
     environment:
-      POSTGRES_DB: jobfit
-      POSTGRES_USER: jobfit
-      POSTGRES_PASSWORD: jobfit_dev_password
+      POSTGRES_DB: skilllens
+      POSTGRES_USER: skilllens
+      POSTGRES_PASSWORD: skilllens_dev_password
 
     ports:
       - "5432:5432"
@@ -14,11 +14,10 @@ services:
       - postgres_data:/var/lib/postgresql
 
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U jobfit -d jobfit"]
+      test: ["CMD-SHELL", "pg_isready -U skilllens -d skilllens"]
       interval: 5s
       timeout: 5s
       retries: 5
-
 
   backend:
     build:
@@ -31,12 +30,11 @@ services:
       - ./backend/.env
 
     environment:
-      DATABASE_URL: postgresql+psycopg://jobfit:jobfit_dev_password@db:5432/jobfit
+      DATABASE_URL: postgresql+psycopg://skilllens:skilllens_dev_password@db:5432/skilllens
 
     depends_on:
       db:
         condition: service_healthy
-
 
   frontend:
     build:
