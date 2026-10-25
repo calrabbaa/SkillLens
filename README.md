@@ -30,6 +30,20 @@ Try SkillLens in three steps:
 
 > **Privacy note:** This is a public portfolio demo. Avoid uploading sensitive personal information. CV data is stored temporarily and scheduled for automatic deletion once it is older than three days.
 
+
+### Example Job Description
+
+You can try SkillLens with the following sample:
+
+> We are looking for a software developer with experience in
+> Python, FastAPI, PostgreSQL, Docker, and REST APIs.
+> Familiarity with AWS and Kubernetes would be advantageous
+> but is not mandatory.
+
+SkillLens should identify the required skills and distinguish
+them from optional technologies.
+
+
 ## Screenshots
 
 ### Dashboard
