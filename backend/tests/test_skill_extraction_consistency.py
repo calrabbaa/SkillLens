@@ -4,21 +4,20 @@ from schemas import Skill, SkillExtractionResult
 from services import skill_extractor
 
 
-def make_result(names):
+def make_result(skills):
     return SkillExtractionResult(
         skills=[
             Skill(
                 name=name,
-                category="Other",
-                required=True,
+                category="Cloud" if name == "AWS" else "Other",
+                required=required,
             )
-            for name in names
+            for name, required in skills
         ]
     )
 
 
 def mock_openai(monkeypatch, results):
-    """Replace OpenAI with predetermined responses."""
     calls = []
 
     def fake_parse(**kwargs):
@@ -41,24 +40,84 @@ def mock_openai(monkeypatch, results):
     return calls
 
 
-def test_incomplete_extraction_is_recovered(monkeypatch):
-    description = """
-    Requirements:
-    Python, FastAPI, React, TypeScript,
-    PostgreSQL, Docker, Git.
+def test_preserves_llm_optional_classification(monkeypatch):
+    description = (
+        "Python, Java and Docker are required. "
+        "Experience with AWS is a plus."
+    )
 
-    Nice to have:
-    GitHub Actions.
-    """
+    response = make_result([
+        ("Python", True),
+        ("Java", True),
+        ("Docker", True),
+        ("AWS", False),
+    ])
 
-    # First AI response contains just one skill.
-    first_response = make_result(["Python"])
+    calls = mock_openai(monkeypatch, [response])
 
-    # Retry improves the response but still misses skills.
+    result = skill_extractor.extract_skills(description)
+
+    skills = {
+        skill.name: skill.required
+        for skill in result.skills
+    }
+
+    assert skills["Python"] is True
+    assert skills["Java"] is True
+    assert skills["Docker"] is True
+    assert skills["AWS"] is False
+
+    assert len(calls) == 1
+
+
+def test_missing_skills_trigger_llm_retry(monkeypatch):
+    description = (
+        "Python, Java and Docker are required. "
+        "Experience with AWS is a plus."
+    )
+
+    first_response = make_result([
+        ("Python", True),
+    ])
+
     second_response = make_result([
-        "Python",
-        "FastAPI",
-        "Docker",
+        ("Python", True),
+        ("Java", True),
+        ("Docker", True),
+        ("AWS", False),
+    ])
+
+    calls = mock_openai(
+        monkeypatch,
+        [first_response, second_response],
+    )
+
+    result = skill_extractor.extract_skills(description)
+
+    skills = {
+        skill.name: skill.required
+        for skill in result.skills
+    }
+
+    assert len(calls) == 2
+    assert len(skills) == 4
+    assert skills["AWS"] is False
+    assert skills["Java"] is True
+
+
+def test_does_not_invent_missing_skills(monkeypatch):
+    description = (
+        "Python, Java and Docker are required. "
+        "Experience with AWS is a plus."
+    )
+
+    first_response = make_result([
+        ("Python", True),
+    ])
+
+    second_response = make_result([
+        ("Python", True),
+        ("Java", True),
     ])
 
     calls = mock_openai(
@@ -70,56 +129,22 @@ def test_incomplete_extraction_is_recovered(monkeypatch):
 
     names = {skill.name for skill in result.skills}
 
-    expected = {
-        "Python",
-        "FastAPI",
-        "React",
-        "TypeScript",
-        "PostgreSQL",
-        "Docker",
-        "Git",
-        "GitHub Actions",
-    }
-
-    assert expected.issubset(names)
-
-    # Incomplete extraction triggered exactly one retry.
+    assert names == {"Python", "Java"}
     assert len(calls) == 2
 
-    # Confirm that optional skills remain optional.
-    skills = {skill.name: skill for skill in result.skills}
 
-    assert skills["GitHub Actions"].required is False
+def test_normalizes_duplicate_aliases(monkeypatch):
+    description = "Experience with PostgreSQL is required."
 
-
-def test_complete_extraction_does_not_retry(monkeypatch):
-    description = """
-    Requirements:
-    Python, FastAPI, Docker, PostgreSQL.
-    """
-
-    complete_response = make_result([
-        "Python",
-        "FastAPI",
-        "Docker",
-        "PostgreSQL",
+    response = make_result([
+        ("Postgres", True),
+        ("PostgreSQL", True),
     ])
 
-    calls = mock_openai(
-        monkeypatch,
-        [complete_response],
-    )
+    calls = mock_openai(monkeypatch, [response])
 
     result = skill_extractor.extract_skills(description)
 
-    names = {skill.name for skill in result.skills}
-
-    assert names == {
-        "Python",
-        "FastAPI",
-        "Docker",
-        "PostgreSQL",
-    }
-
-    # No unnecessary second OpenAI request.
+    assert len(result.skills) == 1
+    assert result.skills[0].name == "PostgreSQL"
     assert len(calls) == 1

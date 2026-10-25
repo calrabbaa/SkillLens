@@ -48,6 +48,13 @@ REQUIRED STATUS:
   beneficial, desirable, or "a plus".
 - If the description simply says that candidates should have experience with
   a skill without calling it optional, treat it as required.
+- Interpret required versus optional status using the full context
+  and meaning of the job description, not only section headings.
+- Understand equivalent expressions of preference or optionality,
+  including "is a plus", "would be advantageous", and
+  "not mandatory".
+- Classify each skill individually, even when required and
+  optional skills appear in the same sentence.
 
 CATEGORIES:
 - Programming: programming languages such as Python, Java, C++, JavaScript
@@ -74,32 +81,18 @@ Return every supported skill found in the job description.
 def extract_skills(job_description: str) -> SkillExtractionResult:
     client = OpenAI()
 
-    response = client.responses.parse(
-        model=MODEL,
-        input=[
-            {
-                "role": "system",
-                "content": SYSTEM_PROMPT,
-            },
-            {
-                "role": "user",
-                "content": job_description,
-            },
-        ],
-        text_format=SkillExtractionResult,
-    )
-
-    if response.output_parsed is None:
-        raise RuntimeError("The model did not return a structured result.")
-
-    return response.output_parsed
-
-def extract_skills(job_description: str) -> SkillExtractionResult:
-    client = OpenAI()
-
     def call_model(
         additional_instruction: str = "",
     ) -> SkillExtractionResult:
+
+        user_content = job_description
+
+        if additional_instruction:
+            user_content += (
+                "\n\nADDITIONAL REVIEW INSTRUCTIONS:\n"
+                + additional_instruction
+            )
+
         response = client.responses.parse(
             model=MODEL,
             input=[
@@ -109,11 +102,7 @@ def extract_skills(job_description: str) -> SkillExtractionResult:
                 },
                 {
                     "role": "user",
-                    "content": (
-                        job_description
-                        + "\n\n"
-                        + additional_instruction
-                    ),
+                    "content": user_content,
                 },
             ],
             text_format=SkillExtractionResult,
@@ -124,66 +113,74 @@ def extract_skills(job_description: str) -> SkillExtractionResult:
                 "The model did not return a structured result."
             )
 
-        return response.output_parsed
+        return reconcile_skills(
+            job_description,
+            response.output_parsed,
+        )
 
-    def get_extracted_names(
+    def normalized_names(
         result: SkillExtractionResult,
     ) -> set[str]:
-        names = set()
 
-        for skill in result.skills:
-            canonical_name, _ = normalize_skill(
+        return {
+            normalize_skill(
                 skill.name,
                 skill.category,
-            )
-            names.add(canonical_name.casefold())
+            )[0].casefold()
+            for skill in result.skills
+        }
 
-        return names
-
-    # Step 1: Detect explicitly mentioned technologies.
-    expected_skills = detect_explicit_skills(job_description)
-
-    # Step 2: Initial AI extraction.
+    # First LLM extraction
     result = call_model()
 
-    extracted_names = get_extracted_names(result)
-
-    # Step 3: Identify missing explicit technologies.
-    missing_skills = {
-        skill
-        for skill in expected_skills
-        if skill.casefold() not in extracted_names
+    # Detect potential omissions, not requirements.
+    expected = {
+        normalize_skill(name, "Other")[0].casefold(): name
+        for name in detect_explicit_skills(job_description)
     }
 
-    # Step 4: Retry only substantially incomplete results.
-    if len(expected_skills) >= 4 and len(missing_skills) >= 2:
+    extracted = normalized_names(result)
+
+    missing = {
+        canonical: name
+        for canonical, name in expected.items()
+        if canonical not in extracted
+    }
+
+    # Retry only when there are substantial omissions.
+    if len(expected) >= 4 and len(missing) >= 2:
+
         retry_instruction = (
-            "Your previous extraction missed some explicitly "
-            "mentioned technical skills. Review the entire "
-            "description carefully.\n\n"
-            "Pay particular attention to these technologies: "
-            + ", ".join(sorted(missing_skills))
+            "Review your previous extraction carefully.\n\n"
+            "Previously identified skills:\n"
+            + ", ".join(
+                skill.name for skill in result.skills
+            )
+            + "\n\nPotentially overlooked technologies:\n"
+            + ", ".join(sorted(missing.values()))
             + "\n\n"
-            "Include a skill only if supported by the job "
-            "description. Preserve distinctions between "
-            "required and optional skills."
+            "Return a complete revised list of technical skills. "
+            "Preserve previously identified skills if supported "
+            "by the description, and include overlooked skills "
+            "only when genuinely mentioned.\n\n"
+            "Independently determine whether EACH skill is "
+            "required or optional using the full semantic "
+            "context of the original description. "
+            "Do not assume that every skill is required."
         )
 
         retry_result = call_model(retry_instruction)
 
-        # Use whichever response covers more explicit skills.
-        retry_names = get_extracted_names(retry_result)
-
+        # Compare coverage of explicitly detected skills.
         original_coverage = len(
-            expected_skills - missing_skills
+            set(expected) & extracted
         )
 
-        retry_coverage = sum(
-            skill.casefold() in retry_names
-            for skill in expected_skills
+        retry_coverage = len(
+            set(expected) & normalized_names(retry_result)
         )
 
         if retry_coverage > original_coverage:
             result = retry_result
 
-    return reconcile_skills(job_description, result)
+    return result
