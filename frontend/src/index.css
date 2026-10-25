@@ -372,3 +372,10 @@ select {
   color: #666;
   font-size: 0.85rem;
 }
+
+.privacy-notice {
+  margin-top: 12px;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: #64748b;
+}

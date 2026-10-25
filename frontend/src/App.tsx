@@ -280,6 +280,13 @@ function App() {
         <section className="card">
           <h2>Your CV</h2>
 
+          <p className="privacy-notice">
+            Your CV is processed to extract relevant skills.
+            Uploaded CV data is automatically deleted after
+            3 days, with cleanup running daily.
+            Please avoid uploading sensitive personal information.
+          </p>
+
           <label className="upload-area">
             <input
               type="file"
