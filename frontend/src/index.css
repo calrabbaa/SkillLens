@@ -379,3 +379,420 @@ select {
   line-height: 1.5;
   color: #64748b;
 }
+
+.analyze-description {
+  max-width: 520px;
+  margin: 0 auto 20px;
+  color: #64748b;
+  line-height: 1.6;
+}
+
+.analyze-hint {
+  margin-top: 12px;
+  font-size: 0.875rem;
+  color: #64748b;
+}
+
+/* Extracted job skills */
+
+.job-description {
+  margin: 16px 0;
+}
+
+.job-description summary {
+  cursor: pointer;
+  font-weight: 500;
+  color: #2563eb;
+}
+
+.job-description p {
+  margin-top: 12px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+.extracted-skills {
+  margin-top: 24px;
+}
+
+.extracted-skills h3 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.extracted-skills h4 {
+  margin: 18px 0 10px;
+  font-size: 0.9rem;
+}
+
+.skill-count {
+  padding: 3px 9px;
+  border-radius: 20px;
+  background: #e2e8f0;
+  color: #334155;
+  font-size: 0.75rem;
+}
+
+.skill-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.skill-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.skill-badge.required {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.skill-badge.optional {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+/* CV skill display */
+
+.cv-summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.cv-summary strong {
+  overflow-wrap: anywhere;
+}
+
+.cv-summary-subtitle {
+  margin: 6px 0 0;
+  font-size: 0.85rem;
+  color: #64748b;
+}
+
+.cv-skills {
+  margin-top: 20px;
+}
+
+.empty-skills {
+  font-size: 0.875rem;
+  color: #64748b;
+}
+
+/* Match results overview */
+
+.match-overview {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin: 24px 0 32px;
+}
+
+.match-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 20px 12px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  text-align: center;
+}
+
+.match-stat-value {
+  color: #0f172a;
+  font-size: 1.8rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.match-stat-total {
+  color: #94a3b8;
+  font-size: 1.1rem;
+  font-weight: 500;
+}
+
+.match-stat-label {
+  color: #64748b;
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+
+.match-section-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.match-section-count {
+  padding: 3px 9px;
+  border-radius: 20px;
+  background: #e2e8f0;
+  color: #475569;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+/* Responsive layout */
+
+@media (max-width: 640px) {
+  .match-overview {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .match-stat {
+    padding: 14px;
+  }
+
+  .match-stat-value {
+    font-size: 1.5rem;
+  }
+}
+
+/* Skill-gap recommendations */
+
+.skill-gaps-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.skill-gaps-header h2 {
+  margin-bottom: 8px;
+}
+
+.skill-gaps-header p {
+  margin: 0;
+  color: #64748b;
+  line-height: 1.6;
+}
+
+.recommendation-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.recommendation-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #ffffff;
+  overflow: hidden;
+}
+
+.recommendation-card[open] {
+  border-color: #93c5fd;
+}
+
+.recommendation-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 20px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.recommendation-header::-webkit-details-marker {
+  display: none;
+}
+
+.recommendation-header:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: -3px;
+}
+
+.recommendation-title {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+
+.recommendation-number {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: #eff6ff;
+  color: #2563eb;
+  font-weight: 700;
+}
+
+.recommendation-title h3 {
+  margin: 0;
+  font-size: 1rem;
+  overflow-wrap: anywhere;
+}
+
+.recommendation-subtitle {
+  display: block;
+  margin-top: 4px;
+  color: #64748b;
+  font-size: 0.8rem;
+}
+
+.recommendation-chevron {
+  color: #64748b;
+  font-size: 1.25rem;
+  transition: transform 0.2s ease;
+}
+
+.recommendation-card[open] .recommendation-chevron {
+  transform: rotate(180deg);
+}
+
+.recommendation-content {
+  display: grid;
+  gap: 20px;
+  padding: 20px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.recommendation-detail h4,
+.recommendation-project h4 {
+  margin: 0 0 8px;
+  font-size: 0.9rem;
+  color: #334155;
+}
+
+.recommendation-detail p,
+.recommendation-project p {
+  margin: 0;
+  color: #475569;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+
+.recommendation-project {
+  padding: 16px;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 10px;
+}
+
+.recommendation-project h4 {
+  color: #166534;
+}
+
+@media (max-width: 640px) {
+  .recommendation-header {
+    padding: 14px;
+  }
+
+  .recommendation-content {
+    padding: 14px;
+  }
+
+  .skill-gaps-header {
+    flex-direction: column;
+  }
+}
+
+/* Mobile responsiveness */
+
+@media (max-width: 640px) {
+  .app {
+    padding: 20px 12px 40px;
+  }
+
+  .app-header {
+    margin-bottom: 24px;
+  }
+
+  .app-header h1 {
+    font-size: 2rem;
+  }
+
+  .app-header p {
+    font-size: 0.9rem;
+    line-height: 1.6;
+  }
+
+  .dashboard {
+    gap: 14px;
+  }
+
+  .card {
+    padding: 18px 14px;
+    min-width: 0;
+  }
+
+  .primary-button {
+    width: 100%;
+    min-height: 44px;
+  }
+
+  textarea,
+  select {
+    font-size: 16px;
+    max-width: 100%;
+  }
+
+  .upload-area {
+    padding: 20px 12px;
+  }
+
+  .selected-resource,
+  .cv-summary {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .history-item {
+    gap: 12px;
+  }
+
+  .history-item strong {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .history-item span {
+    flex-shrink: 0;
+  }
+
+  .job-preview,
+  .job-description,
+  .recommendation-content {
+    overflow-wrap: anywhere;
+  }
+
+  .match-columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .match-overview {
+    grid-template-columns: 1fr;
+  }
+
+  .score-circle {
+    width: 150px;
+    height: 150px;
+  }
+
+  .score-circle-inner {
+    width: 120px;
+    height: 120px;
+  }
+}

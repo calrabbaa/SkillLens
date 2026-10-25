@@ -44,6 +44,7 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [analyzing, setAnalyzing] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [creatingJob, setCreatingJob] = useState(false);
 
   const [error, setError] = useState("");
 
@@ -79,52 +80,59 @@ function App() {
   }, []);
 
 
-  async function handleCreateJob() {
-    const trimmedDescription = description.trim();
+async function handleCreateJob() {
+  const trimmedDescription = description.trim();
 
-    if (trimmedDescription.length < 20) {
-      setError(
-        "Please enter a job description with at least 20 characters."
-      );
-      return;
-    }
-
-    if (trimmedDescription.length > 50000) {
-      setError(
-        "The job description must not exceed 50,000 characters."
-      );
-      return;
-    }
-
-    try {
-      setError("");
-
-      const job = await createJob(trimmedDescription);
-
-      setJobs((current) => [
-        {
-          id: job.id,
-          created_at: job.created_at,
-          skill_count: job.skills.length,
-        },
-        ...current,
-      ]);
-
-      setSelectedJob(job);
-      setSelectedJobId(job.id);
-      setDescription("");
-      setMatch(null);
-      setRecommendations(null);
-    } catch (error) {
-      console.error(error);
-
-      setError(
-        error instanceof Error
-          ? error.message
-          : "Could not create the job.",
-      );
-    }
+  if (trimmedDescription.length < 20) {
+    setError(
+      "Please enter a job description with at least 20 characters."
+    );
+    return;
   }
+
+  if (trimmedDescription.length > 50000) {
+    setError(
+      "The job description must not exceed 50,000 characters."
+    );
+    return;
+  }
+
+  if (creatingJob) return;
+
+  try {
+    setCreatingJob(true);
+    setError("");
+
+    const job = await createJob(trimmedDescription);
+
+    setJobs((current) => [
+      {
+        id: job.id,
+        created_at: job.created_at,
+        skill_count: job.skills.length,
+      },
+      ...current,
+    ]);
+
+    setSelectedJob(job);
+    setSelectedJobId(job.id);
+    setDescription("");
+    setMatch(null);
+    setRecommendations(null);
+
+  } catch (error) {
+    console.error(error);
+
+    setError(
+      error instanceof Error
+        ? error.message
+        : "Could not create the job."
+    );
+
+  } finally {
+    setCreatingJob(false);
+  }
+}
 
 
   async function handleSelectJob(jobId: number) {
@@ -324,13 +332,38 @@ function App() {
 
           {selectedResume && (
             <div className="selected-resource">
-              <strong>
-                {selectedResume.filename}
-              </strong>
+              <div className="cv-summary">
+                <div>
+                  <strong>{selectedResume.filename}</strong>
+                  <p className="cv-summary-subtitle">
+                    Skills identified from your uploaded CV
+                  </p>
+                </div>
 
-              <span>
-                {selectedResume.skills.length} skills detected
-              </span>
+                <span className="skill-count">
+                  {selectedResume.skills.length} skills
+                </span>
+              </div>
+
+              <div className="cv-skills">
+                {selectedResume.skills.length > 0 ? (
+                  <div className="skill-badges">
+                    {selectedResume.skills.map((skill) => (
+                      <span
+                        key={skill.name}
+                        className="skill-badge optional"
+                        title={skill.category}
+                      >
+                        {skill.name}
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="empty-skills">
+                    No technical skills were detected in this CV.
+                  </p>
+                )}
+              </div>
             </div>
           )}
 
@@ -383,17 +416,55 @@ function App() {
           </select>
 
 
-          {selectedJob && (
-            <div className="job-preview">
+        {selectedJob && (
+          <div className="job-preview">
+            <h3>Job #{selectedJob.id}</h3>
+
+            <details className="job-description">
+              <summary>View job description</summary>
+              <p>{selectedJob.description}</p>
+            </details>
+
+            <div className="extracted-skills">
               <h3>
-                Job #{selectedJob.id}
+                Extracted skills
+                <span className="skill-count">
+                  {selectedJob.skills.length}
+                </span>
               </h3>
 
-              <p>
-                {selectedJob.description}
-              </p>
+              <h4>Required skills</h4>
+              <div className="skill-badges">
+                {selectedJob.skills
+                  .filter((skill) => skill.required)
+                  .map((skill) => (
+                    <span
+                      key={skill.name}
+                      className="skill-badge required"
+                      title={skill.category}
+                    >
+                      {skill.name}
+                    </span>
+                  ))}
+              </div>
+
+              <h4>Nice to have</h4>
+              <div className="skill-badges">
+                {selectedJob.skills
+                  .filter((skill) => !skill.required)
+                  .map((skill) => (
+                    <span
+                      key={skill.name}
+                      className="skill-badge optional"
+                      title={skill.category}
+                    >
+                      {skill.name}
+                    </span>
+                  ))}
+              </div>
             </div>
-          )}
+          </div>
+        )}
         </section>
 
 
@@ -413,31 +484,63 @@ function App() {
           <button
             className="primary-button"
             onClick={handleCreateJob}
+            disabled={creatingJob}
+            aria-busy={creatingJob}
           >
-            Save and analyze job
+            {creatingJob
+              ? "Extracting skills..."
+              : "Save and analyze job"}
           </button>
+
+          {creatingJob && (
+          <p className="analysis-status" role="status">
+            Analyzing the job description and identifying
+            technical skills. This may take a moment.
+          </p>
+        )}
+
         </section>
 
 
         <section className="card analyze-card">
-
           <h2>Analyze your fit</h2>
+
+          <p className="analyze-description">
+            Compare your CV with the target job to discover
+            matching skills, missing requirements, and
+            personalized learning recommendations.
+          </p>
 
           <button
             className="primary-button"
             onClick={handleAnalyze}
-            disabled={analyzing}
+            disabled={
+              analyzing ||
+              creatingJob ||
+              uploading ||
+              !selectedJobId ||
+              !selectedResume
+            }
+            aria-busy={analyzing}
           >
-            {analyzing
-              ? "Analyzing..."
-              : "Analyze match"}
-            {analyzing && (
-            <p className="analysis-status">
-                {analysisStep}
-            </p>
-            )}
+            {analyzing ? "Analyzing..." : "Analyze match"}
           </button>
 
+          {!selectedJobId || !selectedResume ? (
+            <p className="analyze-hint">
+              {!selectedResume && !selectedJobId
+                ? "Upload your CV and select a target job to get started."
+                : !selectedResume
+                  ? "Upload your CV to continue."
+                  : "Select a target job to continue."}
+            </p>
+          ) : null}
+
+          {analyzing && (
+            <p className="analysis-status" role="status">
+              {analysisStep}
+            </p>
+          )}
         </section>
 
         {match && (
@@ -457,11 +560,49 @@ function App() {
               </div>
             </div>
 
+            <div className="match-overview">
+              <div className="match-stat">
+                <span className="match-stat-value">
+                  {match.required_matched.length}
+                  <span className="match-stat-total">
+                    /{match.required_matched.length + match.required_missing.length}
+                  </span>
+                </span>
+                <span className="match-stat-label">
+                  Required skills matched
+                </span>
+              </div>
 
+              <div className="match-stat">
+                <span className="match-stat-value">
+                  {match.preferred_matched.length}
+                  <span className="match-stat-total">
+                    /{match.preferred_matched.length + match.preferred_missing.length}
+                  </span>
+                </span>
+                <span className="match-stat-label">
+                  Preferred skills matched
+                </span>
+              </div>
+
+              <div className="match-stat">
+                <span className="match-stat-value">
+                  {match.required_missing.length}
+                </span>
+                <span className="match-stat-label">
+                  Required skills to develop
+                </span>
+              </div>
+            </div>
             <div className="match-columns">
 
               <div>
-                <h3>Required skills</h3>
+                <h3 className="match-section-title">
+                  Required skills
+                  <span className="match-section-count">
+                    {match.required_matched.length + match.required_missing.length}
+                  </span>
+                </h3>
 
                 {match.required_matched.map(
                   (skill) => (
@@ -488,7 +629,12 @@ function App() {
 
 
               <div>
-                <h3>Preferred skills</h3>
+                <h3 className="match-section-title">
+                  Preferred skills
+                  <span className="match-section-count">
+                    {match.preferred_matched.length + match.preferred_missing.length}
+                  </span>
+                </h3>
 
                 {match.preferred_matched.map(
                   (skill) => (
@@ -540,53 +686,72 @@ function App() {
 
 
         {recommendations &&
-          recommendations.recommendations.length >
-            0 && (
-            <section className="card">
+          recommendations.recommendations.length > 0 && (
+            <section className="card skill-gaps-section">
+              <div className="skill-gaps-header">
+                <div>
+                  <h2>Your learning roadmap</h2>
+                  <p>
+                    Explore your skill gaps and discover practical
+                    ways to improve your job readiness.
+                  </p>
+                </div>
 
-              <h2>Skill gaps</h2>
-
-              <div className="recommendations">
-
-                {recommendations.recommendations.map(
-                  (recommendation) => (
-                    <article
-                      className="recommendation"
-                      key={recommendation.skill_name}
-                    >
-                      <h3>
-                        {recommendation.skill_name}
-                      </h3>
-
-                      <p>
-                        <strong>
-                          Why it matters
-                        </strong>
-                        <br />
-                        {recommendation.importance}
-                      </p>
-
-                      <p>
-                        <strong>
-                          What to learn
-                        </strong>
-                        <br />
-                        {recommendation.what_to_learn}
-                      </p>
-
-                      <p>
-                        <strong>
-                          Practice project
-                        </strong>
-                        <br />
-                        {recommendation.practice_project}
-                      </p>
-                    </article>
-                  ),
-                )}
-
+                <span className="skill-count">
+                  {recommendations.recommendations.length} recommendations
+                </span>
               </div>
 
+              <div className="recommendation-list">
+                {recommendations.recommendations.map(
+                  (recommendation, index) => (
+                    <details
+                      className="recommendation-card"
+                      key={recommendation.skill_name}
+                      open={index === 0}
+                    >
+                      <summary className="recommendation-header">
+                        <div className="recommendation-title">
+                          <span className="recommendation-number">
+                            {index + 1}
+                          </span>
+
+                          <div>
+                            <h3>{recommendation.skill_name}</h3>
+                            <span className="recommendation-subtitle">
+                              Learning recommendation
+                            </span>
+                          </div>
+                        </div>
+
+                        <span
+                          className="recommendation-chevron"
+                          aria-hidden="true"
+                        >
+                          ▾
+                        </span>
+                      </summary>
+
+                      <div className="recommendation-content">
+                        <div className="recommendation-detail">
+                          <h4>Why it matters</h4>
+                          <p>{recommendation.importance}</p>
+                        </div>
+
+                        <div className="recommendation-detail">
+                          <h4>What to learn</h4>
+                          <p>{recommendation.what_to_learn}</p>
+                        </div>
+
+                        <div className="recommendation-project">
+                          <h4>Practice project</h4>
+                          <p>{recommendation.practice_project}</p>
+                        </div>
+                      </div>
+                    </details>
+                  ),
+                )}
+              </div>
             </section>
           )}
 

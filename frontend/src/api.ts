@@ -101,7 +101,7 @@ export type JobSummary = {
 async function handleResponse<T>(response: Response): Promise<T> {
   if (response.status === 429) {
     throw new Error(
-        "SkillLens has reached its temporary AI usage limits." +
+        "SkillLens has reached its temporary AI usage limits. " +
         "Please try again later."
     );
   }
