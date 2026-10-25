@@ -8,6 +8,9 @@ from api_schemas import JobCreate, JobDetail, JobSummary
 from database import get_db
 from services.job_service import create_job
 
+from fastapi import Request
+from rate_limiter import ai_rate_limit
+
 
 router = APIRouter(
     prefix="/api/jobs",
@@ -53,7 +56,9 @@ def get_job_detail(
     response_model=JobDetail,
     status_code=status.HTTP_201_CREATED,
 )
+@ai_rate_limit
 def create_job_endpoint(
+    request: Request,
     job: JobCreate,
     db: Session = Depends(get_db),
 ):

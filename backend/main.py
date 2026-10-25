@@ -14,6 +14,11 @@ from routers.recommendations import router as recommendations_router
 
 from dotenv import load_dotenv
 
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+
+from rate_limiter import limiter
+
 load_dotenv()
 
 @asynccontextmanager
@@ -48,6 +53,13 @@ app.include_router(jobs_router)
 app.include_router(resumes_router)
 app.include_router(matches_router)
 app.include_router(recommendations_router)
+
+app.state.limiter = limiter
+
+app.add_exception_handler(
+    RateLimitExceeded,
+    _rate_limit_exceeded_handler,
+)
 
 
 class JobDescription(BaseModel):
