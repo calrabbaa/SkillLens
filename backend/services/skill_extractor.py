@@ -5,6 +5,10 @@ from openai import OpenAI
 
 from schemas import SkillExtractionResult
 
+from services.skill_detector import detect_explicit_skills
+from services.skill_normalizer import normalize_skill
+
+from services.skill_reconciler import reconcile_skills
 
 load_dotenv()
 
@@ -89,3 +93,97 @@ def extract_skills(job_description: str) -> SkillExtractionResult:
         raise RuntimeError("The model did not return a structured result.")
 
     return response.output_parsed
+
+def extract_skills(job_description: str) -> SkillExtractionResult:
+    client = OpenAI()
+
+    def call_model(
+        additional_instruction: str = "",
+    ) -> SkillExtractionResult:
+        response = client.responses.parse(
+            model=MODEL,
+            input=[
+                {
+                    "role": "system",
+                    "content": SYSTEM_PROMPT,
+                },
+                {
+                    "role": "user",
+                    "content": (
+                        job_description
+                        + "\n\n"
+                        + additional_instruction
+                    ),
+                },
+            ],
+            text_format=SkillExtractionResult,
+        )
+
+        if response.output_parsed is None:
+            raise RuntimeError(
+                "The model did not return a structured result."
+            )
+
+        return response.output_parsed
+
+    def get_extracted_names(
+        result: SkillExtractionResult,
+    ) -> set[str]:
+        names = set()
+
+        for skill in result.skills:
+            canonical_name, _ = normalize_skill(
+                skill.name,
+                skill.category,
+            )
+            names.add(canonical_name.casefold())
+
+        return names
+
+    # Step 1: Detect explicitly mentioned technologies.
+    expected_skills = detect_explicit_skills(job_description)
+
+    # Step 2: Initial AI extraction.
+    result = call_model()
+
+    extracted_names = get_extracted_names(result)
+
+    # Step 3: Identify missing explicit technologies.
+    missing_skills = {
+        skill
+        for skill in expected_skills
+        if skill.casefold() not in extracted_names
+    }
+
+    # Step 4: Retry only substantially incomplete results.
+    if len(expected_skills) >= 4 and len(missing_skills) >= 2:
+        retry_instruction = (
+            "Your previous extraction missed some explicitly "
+            "mentioned technical skills. Review the entire "
+            "description carefully.\n\n"
+            "Pay particular attention to these technologies: "
+            + ", ".join(sorted(missing_skills))
+            + "\n\n"
+            "Include a skill only if supported by the job "
+            "description. Preserve distinctions between "
+            "required and optional skills."
+        )
+
+        retry_result = call_model(retry_instruction)
+
+        # Use whichever response covers more explicit skills.
+        retry_names = get_extracted_names(retry_result)
+
+        original_coverage = len(
+            expected_skills - missing_skills
+        )
+
+        retry_coverage = sum(
+            skill.casefold() in retry_names
+            for skill in expected_skills
+        )
+
+        if retry_coverage > original_coverage:
+            result = retry_result
+
+    return reconcile_skills(job_description, result)
