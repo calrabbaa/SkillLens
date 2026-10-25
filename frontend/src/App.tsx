@@ -64,7 +64,12 @@ function App() {
         setResumes(loadedResumes);
       } catch (error) {
         console.error(error);
-        setError("Could not load SkillLens data.");
+
+        setError(
+            error instanceof Error
+            ? error.message
+            : "Could not load SkillLens data."
+        )
       } finally {
         setLoading(false);
       }
@@ -75,15 +80,26 @@ function App() {
 
 
   async function handleCreateJob() {
-    if (!description.trim()) {
-      setError("Please enter a job description.");
+    const trimmedDescription = description.trim();
+
+    if (trimmedDescription.length < 20) {
+      setError(
+        "Please enter a job description with at least 20 characters."
+      );
+      return;
+    }
+
+    if (trimmedDescription.length > 50000) {
+      setError(
+        "The job description must not exceed 50,000 characters."
+      );
       return;
     }
 
     try {
       setError("");
 
-      const job = await createJob(description);
+      const job = await createJob(trimmedDescription);
 
       setJobs((current) => [
         {
@@ -277,6 +293,12 @@ function App() {
 
       <main className="dashboard">
 
+        {error && (
+          <div className="error">
+            {error}
+          </div>
+        )}
+
         <section className="card">
           <h2>Your CV</h2>
 
@@ -380,9 +402,10 @@ function App() {
 
           <textarea
             value={description}
-            onChange={(event) =>
-              setDescription(event.target.value)
-            }
+            onChange={(event) => {
+              setDescription(event.target.value);
+              setError("");
+            }}
             placeholder="Paste a job description here..."
             rows={8}
           />
@@ -416,14 +439,6 @@ function App() {
           </button>
 
         </section>
-
-
-        {error && (
-          <div className="error">
-            {error}
-          </div>
-        )}
-
 
         {match && (
           <section className="card results">

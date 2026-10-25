@@ -99,6 +99,13 @@ export type JobSummary = {
 
 
 async function handleResponse<T>(response: Response): Promise<T> {
+  if (response.status === 429) {
+    throw new Error(
+        "SkillLens has reached its temporary AI usage limits." +
+        "Please try again later."
+    );
+  }
+
   if (response.ok) {
     return response.json();
   }
@@ -108,9 +115,15 @@ async function handleResponse<T>(response: Response): Promise<T> {
   try {
     const error = await response.json();
 
-    if (error.detail) {
-      message = error.detail;
-    }
+    if (typeof error.detail === "string") {
+        message = error.detail;
+    } else if (Array.isArray(error.detail)) {
+        message = error.detail
+        .map((item: { msg?: string }) =>
+        item.msg ?? "Invalid input."
+    )
+    .join(" ");
+}
   } catch {
     // Keep the default error message.
   }
