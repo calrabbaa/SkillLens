@@ -405,12 +405,12 @@ async function handleCreateJob() {
               Select a job
             </option>
 
-            {jobs.map((job) => (
+            {jobs.map((job, index) => (
               <option
                 key={job.id}
                 value={job.id}
               >
-                Job #{job.id} — {job.skill_count} skills
+                Job {jobs.length - index} — {job.skill_count} skills
               </option>
             ))}
           </select>
@@ -418,7 +418,7 @@ async function handleCreateJob() {
 
         {selectedJob && (
           <div className="job-preview">
-            <h3>Job #{selectedJob.id}</h3>
+            <h3>Selected job</h3>
 
             <details className="job-description">
               <summary>View job description</summary>
