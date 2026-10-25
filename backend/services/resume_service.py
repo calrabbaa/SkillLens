@@ -14,6 +14,7 @@ def create_resume(
     db: Session,
     filename: str,
     file_bytes: bytes,
+    demo_session_id: str,
 ) -> int:
     """
     Extract text from a PDF CV, identify skills using the LLM,
@@ -21,16 +22,14 @@ def create_resume(
     """
 
     try:
-        # 1. Extract the text from the PDF.
         extracted_text = extract_pdf_text(file_bytes)
 
-        # 2. Extract skills from the CV text.
         result = extract_skills(extracted_text)
 
-        # 3. Create the Resume record.
         resume = models.Resume(
             filename=filename,
             extracted_text=extracted_text,
+            demo_session_id=demo_session_id,
         )
 
         db.add(resume)
@@ -54,7 +53,6 @@ def create_resume(
 
             seen_skill_names.add(normalized_lookup)
 
-            # Reuse an existing global Skill if one exists.
             statement = select(models.Skill).where(
                 models.Skill.name == skill_name
             )
@@ -70,7 +68,6 @@ def create_resume(
                 db.add(skill)
                 db.flush()
 
-            # Connect the CV with the skill.
             resume_skill = models.ResumeSkill(
                 resume_id=resume.id,
                 skill_id=skill.id,

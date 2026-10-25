@@ -10,7 +10,14 @@ class Job(Base):
     __tablename__ = "jobs"
 
     id: Mapped[int] = mapped_column(primary_key=True)
+
+    demo_session_id: Mapped[str | None] = mapped_column(
+        String(64),
+        nullable=True,
+        index=True,
+    )
     description: Mapped[str] = mapped_column(Text, nullable=False)
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
@@ -27,6 +34,7 @@ class Skill(Base):
     __tablename__ = "skills"
 
     id: Mapped[int] = mapped_column(primary_key=True)
+
     name: Mapped[str] = mapped_column(
         String(100),
         unique=True,
@@ -90,6 +98,12 @@ class Resume(Base):
     __tablename__ = "resumes"
 
     id: Mapped[int] = mapped_column(primary_key=True)
+
+    demo_session_id: Mapped[str | None] = mapped_column(
+        String(64),
+        nullable=True,
+        index=True,
+    )
 
     filename: Mapped[str] = mapped_column(
         String(255),

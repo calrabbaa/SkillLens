@@ -11,6 +11,8 @@ from services.job_service import create_job
 from fastapi import Request
 from rate_limiter import ai_rate_limit
 
+from demo_sessions import get_demo_session_id
+
 
 router = APIRouter(
     prefix="/api/jobs",
@@ -21,6 +23,7 @@ router = APIRouter(
 def get_job_detail(
     db: Session,
     job_id: int,
+    demo_session_id: str,
 ) -> JobDetail | None:
     statement = (
         select(models.Job)
@@ -28,7 +31,10 @@ def get_job_detail(
             selectinload(models.Job.skills)
             .selectinload(models.JobSkill.skill)
         )
-        .where(models.Job.id == job_id)
+        .where(
+            models.Job.id == job_id,
+            models.Job.demo_session_id == demo_session_id
+            )
     )
 
     job = db.scalar(statement)
@@ -61,13 +67,19 @@ def create_job_endpoint(
     request: Request,
     job: JobCreate,
     db: Session = Depends(get_db),
+    demo_session_id: str = Depends(get_demo_session_id),
 ):
     job_id = create_job(
         db=db,
         description=job.description,
+        demo_session_id=demo_session_id,
     )
 
-    result = get_job_detail(db, job_id)
+    result = get_job_detail(
+        db,
+        job_id,
+        demo_session_id,
+    )
 
     if result is None:
         raise HTTPException(
@@ -77,7 +89,6 @@ def create_job_endpoint(
 
     return result
 
-
 @router.get(
     "",
     response_model=list[JobSummary],
@@ -86,10 +97,12 @@ def list_jobs(
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=20, ge=1, le=100),
     db: Session = Depends(get_db),
+    demo_session_id: str = Depends(get_demo_session_id),
 ):
     statement = (
         select(models.Job)
         .options(selectinload(models.Job.skills))
+        .where(models.Job.demo_session_id == demo_session_id)
         .order_by(models.Job.created_at.desc())
         .offset(skip)
         .limit(limit)
@@ -114,8 +127,9 @@ def list_jobs(
 def get_job(
     job_id: int,
     db: Session = Depends(get_db),
+    demo_session_id: str = Depends(get_demo_session_id),
 ):
-    result = get_job_detail(db, job_id)
+    result = get_job_detail(db, job_id, demo_session_id)
 
     if result is None:
         raise HTTPException(

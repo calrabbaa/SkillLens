@@ -13,6 +13,7 @@ from services.match_engine import (
 def get_job_for_matching(
     db: Session,
     job_id: int,
+    demo_session_id: str,
 ) -> models.Job | None:
     statement = (
         select(models.Job)
@@ -20,7 +21,10 @@ def get_job_for_matching(
             selectinload(models.Job.skills)
             .selectinload(models.JobSkill.skill)
         )
-        .where(models.Job.id == job_id)
+        .where(
+            models.Job.id == job_id,
+            models.Job.demo_session_id == demo_session_id,
+            )
     )
 
     return db.scalar(statement)
@@ -29,6 +33,7 @@ def get_job_for_matching(
 def get_resume_for_matching(
     db: Session,
     resume_id: int,
+    demo_session_id: str,
 ) -> models.Resume | None:
     statement = (
         select(models.Resume)
@@ -36,7 +41,10 @@ def get_resume_for_matching(
             selectinload(models.Resume.skills)
             .selectinload(models.ResumeSkill.skill)
         )
-        .where(models.Resume.id == resume_id)
+        .where(
+            models.Resume.id == resume_id,
+            models.Resume.demo_session_id == demo_session_id,
+            )
     )
 
     return db.scalar(statement)
@@ -46,13 +54,14 @@ def calculate_match(
     db: Session,
     job_id: int,
     resume_id: int,
+    demo_session_id: str,
 ) -> dict:
-    job = get_job_for_matching(db, job_id)
+    job = get_job_for_matching(db, job_id, demo_session_id)
 
     if job is None:
         raise ValueError("Job not found.")
 
-    resume = get_resume_for_matching(db, resume_id)
+    resume = get_resume_for_matching(db, resume_id, demo_session_id)
 
     if resume is None:
         raise ValueError("CV not found.")

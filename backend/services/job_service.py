@@ -10,6 +10,7 @@ from services.skill_normalizer import normalize_skill
 def create_job(
     db: Session,
     description: str,
+    demo_session_id: str,
 ) -> int:
     """
     Analyze a job description and persist the job,
@@ -25,6 +26,7 @@ def create_job(
         # Create the job.
         job_record = models.Job(
             description=description,
+            demo_session_id=demo_session_id,
         )
 
         db.add(job_record)
