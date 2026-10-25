@@ -30,6 +30,24 @@ Try SkillLens in three steps:
 
 > **Privacy note:** This is a public portfolio demo. Avoid uploading sensitive personal information. CV data is stored temporarily and scheduled for automatic deletion once it is older than three days.
 
+## Screenshots
+
+### Dashboard
+Upload a CV, analyze job descriptions, and explore extracted technical skills.
+
+![SkillLens Dashboard](docs/screenshots/dashboard.png)
+
+### Skill Matching
+Compare required and preferred skills with an explainable match score.
+
+![Skill Matching Results](docs/screenshots/skill-matching.png)
+
+### Personalized Learning Roadmap
+Explore AI-generated recommendations and practical project ideas.
+
+![Learning Recommendations](docs/screenshots/recommendations.png)
+
+
 
 ## Architecture
 
@@ -46,7 +64,7 @@ flowchart TD
     subgraph Backend["Backend — Render"]
         API["FastAPI REST API"]
         Sessions["Anonymous Session Validation"]
-        Extractor["Hybrid Skill Extraction"]
+        Extractor["LLM-first Skill Extraction"]
         Matcher["Deterministic Matching Engine"]
         PDF["PDF Processing"]
         Recommendations["AI Recommendations"]
@@ -77,7 +95,7 @@ flowchart TD
 ### Key Design Decisions
 
 - **Separation of concerns:** The React frontend communicates with FastAPI through REST endpoints, allowing independent deployment and development.
-- **Hybrid AI extraction:** OpenAI Structured Outputs are combined with deterministic technology detection, normalization, and deduplication for more consistent results.
+- **LLM-first skill extraction:** SkillLens uses LLM-based semantic skill extraction with deterministic normalization, deduplication, completeness checks, and bounded retries. The LLM interprets whether each skill is required or optional based on the job description's context.
 - **Deterministic matching:** The match score is calculated from normalized skills rather than generated directly by an LLM.
 - **Anonymous sessions:** Signed session tokens provide session-level data isolation without requiring user registration.
 - **Privacy and abuse protection:** PDF validation, AI request rate limiting, and scheduled CV deletion help protect the public demo.
@@ -202,6 +220,7 @@ DEMO_SESSION_SECRET=your_secure_random_secret
 DATABASE_URL=postgresql+psycopg://skilllens:skilllens_dev_password@localhost:5432/skilllens
 CORS_ORIGINS=http://localhost:3000,http://localhost:5173
 ```
+Replace OPENAI_MODEL with a model ID supported by your OpenAI API project. The selected model must support Structured Outputs.
 
 Generate a secure session secret with Python:
 
@@ -256,6 +275,27 @@ docker compose up -d --build
 
 **Note:** Running `docker compose down -v` also deletes the local PostgreSQL volume and its data.
 
+## Running Tests
+
+The backend includes automated tests covering skill extraction, matching logic, API validation, session isolation, rate limiting, and PDF processing.
+
+Run the complete backend test suite:
+
+```bash
+cd backend
+uv run pytest -v
+```
+
+Run the frontend production build:
+
+```bash
+cd ../frontend
+npm ci
+npm run build
+```
+
+Backend tests run automatically through GitHub Actions when changes are pushed to the repository.
+
 
 ## API
 
@@ -306,46 +346,84 @@ FastAPI provides automatically generated Swagger documentation:
 
 ## Matching Approach
 
-Skill matching is deliberately deterministic.
+SkillLens separates **AI-powered skill extraction** from **deterministic skill matching** to combine natural-language understanding with predictable, explainable results.
 
-The application first normalizes skills such as:
+### 1. Skill Extraction
+
+Job descriptions are analyzed using OpenAI Structured Outputs. The LLM identifies technical skills and determines whether each skill is **required** or **preferred**, based on the context of the job description.
+
+To improve consistency, SkillLens applies:
+
+- **Normalization:** Map different names for the same technology to a canonical representation.
+- **Deduplication:** Remove duplicate skills and aliases.
+- **Completeness checks:** Detect explicitly mentioned technologies that may have been overlooked.
+- **Bounded retries:** Request an additional LLM extraction when substantial omissions are detected.
+
+The deterministic checks do not override the LLM's required/optional classifications.
+
+### 2. Skill Normalization
+
+Before matching, equivalent skill names are mapped to canonical representations.
+
+Examples:
 
 ```text
-Postgres → PostgreSQL
+Postgres  → PostgreSQL
 REST APIs → REST API
-k8s → Kubernetes
+k8s       → Kubernetes
 ```
 
-It then compares canonical job and CV skills.
+This reduces mismatches caused by differences in terminology.
 
-Required skills receive a higher weight than preferred skills when calculating the match score.
+### 3. Deterministic Skill Matching
 
-AI is used for language-heavy tasks such as:
+After extraction and normalization, SkillLens compares the job's required and preferred skills against the skills extracted from the candidate's CV.
 
-* extracting skills from unstructured text
-* generating explanations
-* generating personalized learning recommendations
+The matching engine:
 
-This keeps the core matching logic predictable and testable.
+- Identifies matched and missing skills.
+- Assigns higher importance to required skills than preferred skills.
+- Calculates a reproducible match score without asking an LLM to generate the score.
+
+### Why This Approach?
+
+LLMs are useful for interpreting unstructured language and understanding contextual requirements, while deterministic algorithms are better suited to consistent calculations.
+
+By separating these responsibilities, SkillLens provides context-aware skill extraction alongside transparent and testable matching logic.
+
 
 ## Current Limitations
 
-* Text-based PDFs are supported; scanned PDFs requiring OCR are not yet supported.
-* Authentication is not implemented yet.
-* The current version is intended as a portfolio/demo application rather than a production service handling sensitive CV data at scale.
-* Job-board scraping is not part of the current application.
+SkillLens is a portfolio demonstration, not a production-grade recruitment platform.
 
-## Roadmap
+- **PDF support:** Only text-based PDFs are supported. Scanned documents requiring OCR are not supported. Uploads are limited to 5 MB, 4 pages, and 20,000 extracted characters.
+- **Anonymous sessions:** Visitors can use the application without registration. Sessions expire after 7 days, and session data is not synchronized between devices.
+- **Temporary CV storage:** CV data is automatically cleaned up once it is older than three days, with cleanup running daily. Because sessions last seven days, visitors may need to upload their CV again during an existing session.
+- **AI variability:** Skill extraction and learning recommendations use an LLM. Results may vary, and extracted skills or classifications are not guaranteed to be perfect.
+- **Rate limiting:** AI-powered endpoints share a limit of 10 requests per hour. Counters are currently stored in memory and reset when the backend restarts.
+- **Skill matching:** Matching uses normalized skill names rather than semantic similarity, so related but differently named skills may not always match.
+- **Security:** Session isolation, input validation, and rate limiting are implemented, but the application has not undergone a comprehensive security assessment.
 
-* User authentication
-* Saved match history
-* Better skill taxonomy
-* Semantic skill matching
-* OCR support for scanned CVs
-* CI/CD with GitHub Actions
-* Production deployment
-* Improved analytics and job-market insights
+The application is intended to demonstrate full-stack development, AI integration, database design, testing, and cloud deployment.
+
+
+## Future Improvements
+
+Potential improvements include:
+
+- **Semantic skill matching:** Recognize related technologies and transferable skills beyond exact normalized names.
+- **Persistent rate limiting:** Use shared storage to maintain request limits across backend restarts and multiple instances.
+- **User accounts:** Add optional authentication and persistent user profiles.
+- **OCR support:** Extract text from scanned CVs and image-based PDFs.
+- **Skill taxonomy:** Improve canonicalization, categorization, and relationships between technologies.
+- **Job-market insights:** Analyze recurring skill requirements across job postings.
+- **Match history:** Allow users to track their skill development over time.
+
+These features are potential extensions rather than requirements for the current portfolio demo.
+
 
 ## License
 
-This project is currently intended as a personal portfolio project.
+Copyright © 2026. All rights reserved.
+
+This project is publicly available for portfolio and demonstration purposes.

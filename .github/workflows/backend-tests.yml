@@ -17,7 +17,7 @@ jobs:
         working-directory: backend
 
     env:
-      DATABASE_URL: postgresql+psycopg://jobfit:jobfit_dev_password@localhost:5432/jobfit
+      DATABASE_URL: postgresql+psycopg://skilllens:skilllens_dev_password@db:5432/skilllens
 
     steps:
       - name: Checkout repository
