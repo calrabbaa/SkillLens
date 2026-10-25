@@ -8,8 +8,6 @@ from schemas import RecommendationResult
 
 load_dotenv()
 
-client = OpenAI()
-
 MODEL = os.getenv(
     "OPENAI_MODEL",
     "gpt-5.6-luna",
@@ -55,6 +53,8 @@ def generate_recommendations(
         skill["name"]
         for skill in missing_skills
     ]
+
+    client = OpenAI()
 
     response = client.responses.parse(
         model=MODEL,
